@@ -15,7 +15,7 @@ def initConnection():
 	server_address = ('localhost', 10000)
 	print >>sys.stderr, 'starting up on %s port %s' % server_address
 
-	#Then bind() is used to associate the socket with the server address. 
+	#Then bind() is used to associate the socket with the server address.
 	# Bind the socket to the port
 	sock.bind(server_address)
 
@@ -27,19 +27,19 @@ def initConnection():
 	# Wait for a connection
 	print >>sys.stderr, 'waiting for a connection'
 
-	#accept() returns an open connection between the server and client, along with the address of the client. 
+	#accept() returns an open connection between the server and client, along with the address of the client.
 	return sock.accept()
 
 def analyzeData(data):
 	if data[0] != 'Politicas':
 		if'QuantumV' in data:
-			initParameters["quantum"] = data[1]
+			initParameters["quantum"] = float(data[1])
 		if 'Real' in data:
-			initParameters["realMem"] = data[2]
+			initParameters["realMem"] = float(data[2])
 		if 'Swap' in data:
-			initParameters["swapMem"] = data[2]
+			initParameters["swapMem"] = float(data[2])
 		if 'Page' in data:
-			initParameters["pageSize"] = data[2]
+			initParameters["pageSize"] = float(data[2])
 
 def receiveData(connection):
 	data = connection.recv(256)
@@ -50,7 +50,7 @@ if __name__ == '__main__':
 	connection, client_address = initConnection()
 	print >>sys.stderr, 'connection from', client_address
 
-	try: 
+	try:
 		while True:
 			data = receiveData(connection)
 
@@ -67,4 +67,3 @@ if __name__ == '__main__':
 		connection.close()
 
 	sys.exit()
-
