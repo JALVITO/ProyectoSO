@@ -15,9 +15,9 @@ sock.connect(server_address)
 
 # After the connection is established, data can be sent through the socket with sendall() and received with recv(), just as in the server.
 
-messages = ['Politicas Scheduling s Memory mm', 'QuantumV q', 'Real memory m', 'Swap memory n', 'Page size p']
+messages = ['Politicas Scheduling RR Memory LFU', 'QuantumV 1', 'Real memory 2', 'Swap memory 2', 'Page size 3']
 try:
-    
+
     # Send data
     for m in messages:
 		print >>sys.stderr, 'client sending "%s"' % m
@@ -25,7 +25,7 @@ try:
 
 		# Look for the response
 		respuesta = sock.recv(256)
-        
+
 		print >>sys.stderr, 'client received "%s"' % respuesta
 
 finally:
@@ -39,4 +39,3 @@ def main(args):
 if __name__ == '__main__':
     import sys
     sys.exit(main(sys.argv))
-
