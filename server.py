@@ -4,13 +4,15 @@
 
 import socket
 import sys
-import time
+import datetime
+import math
 
 initParameters = {}
 process = []
 pages = []
 listos = []
 pid = 0
+timestamp = datetime.datetime.now()
 
 def initConnection():
 	# Create a TCP/IP socket
@@ -48,6 +50,7 @@ def analyzeData(data):
 		if 'Create' in data:
 			crearProceso(float(data[1]))
 
+
 def verifyInsert(proc):
 	if memSpace() <= proc["psize"]:
 		MFU(proc)
@@ -67,23 +70,41 @@ def memSpace():
 
 def insertarProceso(proc):
 	pagesInserted = 0
-	for i in pages:
-		if pages[i]["pid"] == -1:
-			pages[i] = {"pid": proc["pid"], "pag": pagesInserted, "freq": 1}
+	for page in pages:
+		if page["pid"] == -1:
+			page = {"pid": proc["pid"], "pag": pagesInserted, "freq": 1}
 			pagesInserted += 1
 			if pagesInserted == proc["psize"]-1:
 				return
 
+def getTimeStamp(time, firstTime):
+	global timestamp
+
+	if firstTime:
+		timestamp = time
+		return "0.000"
+
+	else:
+		delta = time - timestamp
+		return "%s:%s" % (delta.seconds, str(delta.microseconds)[:3])
 
 def crearProceso(size):
+	global pid
 	pid += 1
-	#print "%s.%s" % (delta.seconds, str(delta.microseconds)[:3])
-	process.append({"pid": pid, "psize": ceil(size/(initParameters["pageSize"]*1024))})
 
-	if listos.amount == 0:
+	psize = size/(initParameters["pageSize"]*1024)
+	
+	process.append({"pid": pid, "psize": math.ceil(psize)})
+	if len(process) == 1:
 		insertarProceso(process[-1])
+		firstTime = True
 	else:
 		listos.append(process[-1])
+		firstTime = False
+
+	time = datetime.datetime.now()
+
+	print >> sys.stderr, "%s" % (getTimeStamp(time, firstTime)), " process ", process[-1]["pid"], " created size ", psize, " pages"
 
 
 def MFU(proc):
