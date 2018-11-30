@@ -15,7 +15,7 @@ sock.connect(server_address)
 
 # After the connection is established, data can be sent through the socket with sendall() and received with recv(), just as in the server.
 
-messages = ['Politicas Scheduling RR Memory LFU', 'QuantumV 1', 'Real memory 2', 'Swap memory 2', 'Page size 3']
+messages = ['Politicas Scheduling RR Memory LFU', 'QuantumV 1', 'Real memory 3', 'Swap memory 4', 'Page size 1', 'Create 2048']
 try:
 
     # Send data

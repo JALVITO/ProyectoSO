@@ -7,6 +7,10 @@ import sys
 import time
 
 initParameters = {}
+process = []
+pages = []
+listos = []
+pid = 0
 
 def initConnection():
 	# Create a TCP/IP socket
@@ -40,6 +44,60 @@ def analyzeData(data):
 			initParameters["swapMem"] = float(data[2])
 		if 'Page' in data:
 			initParameters["pageSize"] = float(data[2])
+			initMem()
+		if 'Create' in data:
+			crearProceso(float(data[1]))
+
+def verifyInsert(proc):
+	if memSpace() <= proc["psize"]:
+		MFU(proc)
+	else:
+		insertarProceso(proc)
+
+def initMem():
+	for i in range (0,int((initParameters["realMem"]/initParameters["pageSize"]))-1):
+		pages.append({"pid": -1})
+
+def memSpace():
+	cant = 0
+	for i in pages:
+		if pages[i]["pid"] == -1:
+			cant += 1
+	return cant
+
+def insertarProceso(proc):
+	pagesInserted = 0
+	for i in pages:
+		if pages[i]["pid"] == -1:
+			pages[i] = {"pid": proc["pid"], "pag": pagesInserted, "freq": 1}
+			pagesInserted += 1
+			if pagesInserted == proc["psize"]-1:
+				return
+
+
+def crearProceso(size):
+	pid += 1
+	#print "%s.%s" % (delta.seconds, str(delta.microseconds)[:3])
+	process.append({"pid": pid, "psize": ceil(size/(initParameters["pageSize"]*1024))})
+
+	if listos.amount == 0:
+		insertarProceso(process[-1])
+	else:
+		listos.append(process[-1])
+
+
+def MFU(proc):
+	arr = sorted(pages, key=lambda k: k["freq"], reverse = True)
+	i = 0
+	while (i < proc["psize"]):
+		toswap = proc["pid"]
+		j = 0
+		while (process[j]["pid"] != toswap):
+			#TODO mandar a swap
+			process[j] = proc 
+			j += 1
+		i += 1
+
 
 def receiveData(connection):
 	data = connection.recv(256)
