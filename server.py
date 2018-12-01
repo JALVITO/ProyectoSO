@@ -7,11 +7,15 @@ import sys
 import datetime
 import math
 
+from tabulate import tabulate
+
 initParameters = {}
 process = []
 pages = []
 listos = []
+historial = []
 pid = 0
+inCPU = 0
 timestamp = datetime.datetime.now()
 
 def initConnection():
@@ -48,7 +52,12 @@ def analyzeData(data):
 			initParameters["pageSize"] = float(data[2])
 			initMem()
 		if 'Create' in data:
-			crearProceso(float(data[1]))
+			ts = crearProceso(float(data[1]))
+			buildEntry(data, ts, "NULL")
+		if 'Quantum' in data:
+			ind = listos[0]-1
+			listos.remove(listos[0])
+			insertarProceso(process[ind])
 
 
 def verifyInsert(proc):
@@ -69,10 +78,19 @@ def memSpace():
 	return cant
 
 def insertarProceso(proc):
+	global inCPU
+
+	proc["cpu"] = True
+	process[inCPU]["cpu"] = False
+	inCPU = proc["pid"]-1
+
 	pagesInserted = 0
 	for page in pages:
 		if page["pid"] == -1:
-			page = {"pid": proc["pid"], "pag": pagesInserted, "freq": 1}
+			page["pid"] = proc["pid"]
+			page["pag"] = pagesInserted
+			page["freq"] = 1
+
 			pagesInserted += 1
 			if pagesInserted == proc["psize"]-1:
 				return
@@ -94,17 +112,30 @@ def crearProceso(size):
 
 	psize = size/(initParameters["pageSize"]*1024)
 	
-	process.append({"pid": pid, "psize": math.ceil(psize)})
+	process.append({"pid": pid, "psize": math.ceil(psize), "cpu": False})
 	if len(process) == 1:
 		insertarProceso(process[-1])
 		firstTime = True
+		process[-1]["cpu"] = True
 	else:
-		listos.append(process[-1])
+		listos.append(process[-1]["pid"])
 		firstTime = False
 
 	time = datetime.datetime.now()
+	ts = getTimeStamp(time, firstTime)
 
-	print >> sys.stderr, "%s" % (getTimeStamp(time, firstTime)), " process ", process[-1]["pid"], " created size ", psize, " pages"
+	print >> sys.stderr, ts, " process ", process[-1]["pid"], " created size ", psize, " pages"
+	return ts
+
+
+def buildEntry(cmd, ts, dirReal):
+
+	str1 = ' '.join(str(listos))
+	str2 = ' '.join("%s:%s.%s" % (pages.index(d) ,d["pid"],d["pag"]) for d in pages if d["pid"]!=-1 )
+
+	historial.append({"cmd": cmd, "ts": ts, "dir": dirReal, "listos": str1, "cpu": process[inCPU]["pid"], "memReal": str2})
+
+	print historial[-1]
 
 
 def MFU(proc):
