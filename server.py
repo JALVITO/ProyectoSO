@@ -150,6 +150,7 @@ def imprimirStats():
 	s += "Page Faults: " + str(sumPF) + '\n'
 	s += "Rendimiento: " + str(float("{0:.2f}".format((1-sumPF/totalVis)*100))) + '%\n'
 
+	print s
 	connection.sendall(s)
 
 def killAll():
