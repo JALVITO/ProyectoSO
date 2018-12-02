@@ -22,6 +22,7 @@ seconds = 0
 timestamp = datetime.datetime.now()
 sim = True
 firstCmd = True
+n = 0
 
 def initConnection():
 	# Create a TCP/IP socket
@@ -52,7 +53,8 @@ def analyzeData(data):
 		connection.sendall(str('Politica RR y MFU recibida'))
 
 	elif'QuantumV' in data:
-		initParameters["quantum"] = float(data[1])
+		initParameters["quantum"] = datetime.timedelta(seconds=float(data[1]))
+		initParameters["quantumFloat"] = float(data[1])
 		connection.sendall(str('Recibido - quantum ' + str(initParameters["quantum"]) + " segundos"))
 
 	elif 'RealMemory' in data:
@@ -101,12 +103,12 @@ def analyzeData(data):
 def increaseHist():
 	for p in pages:
 		if p["pid"] != -1:
-			p["hist"] = p["hist"] + 1	
+			p["hist"] = p["hist"] + initParameters["quantumFloat"]	
 
 def end():
 	sim = False
-	process[inCPU]["Tcpu"] += 1
-	process[inCPU]["vis"] += 1
+	process[inCPU]["Tcpu"] += initParameters["quantumFloat"]	
+	process[inCPU]["vis"] += initParameters["quantumFloat"]	
 	imprimirStats()
 	ts = killAll()
 
@@ -203,10 +205,10 @@ def increaseTEspera():
 		process[l-1]["Tespera"] += 1
 
 def quantum(kill):
-	global seconds
+	global seconds, n
 
 	if not kill:
-		seconds = seconds + 1
+		n += 1
 
 	time = datetime.datetime.now()
 	ts = getTimeStamp(time, True)
@@ -218,10 +220,10 @@ def quantum(kill):
 		if not kill:
 			connection.sendall(str(str(ts)+ " Quantum end"))
 
-	process[inCPU]["Tcpu"] += 1
+	process[inCPU]["Tcpu"] += initParameters["quantumFloat"]
 	increaseTEspera()
 
-	process[inCPU]["vis"] += 1
+	process[inCPU]["vis"] += initParameters["quantumFloat"]
 
 	increaseHist()
 
@@ -366,17 +368,37 @@ def insertarProceso(proc):
 	 		#proc["listaPagProc"][proc["lastUsed"]] = 1
 	 		return
 
-def getTimeStamp(time, firstTime):
-	global timestamp, firstCmd
+# def getTimeStamp(time, firstTime):
+# 	global timestamp, firstCmd
 
-	if firstTime or firstCmd:
+# 	if firstTime or firstCmd:
+# 		firstCmd = False
+# 		timestamp = time
+# 		return str(seconds) + ":000"
+
+# 	else:
+# 		delta = time - timestamp
+# 		return "%s:%s" % (seconds, str(delta.microseconds)[:3])
+
+def getTimeStamp(time, firstTime):
+	global firstCmd, timestamp
+
+	if firstCmd:
 		firstCmd = False
 		timestamp = time
-		return str(seconds) + ":000"
+		if not firstTime:
+			return "0:000"
 
-	else:
-		delta = time - timestamp
-		return "%s:%s" % (seconds, str(delta.microseconds)[:3])
+	timeshift = n*initParameters["quantum"]
+
+	if firstTime:
+		timestamp = time
+		return "%s:%s" % (str(timeshift.seconds), str(timeshift.microseconds)[:3]) 
+
+	delta = (time - timestamp) + timeshift
+	return "%s:%s" % (str(delta.seconds), str(delta.microseconds)[:3]) 
+
+
 
 def crearProceso(size):
 	global pid
