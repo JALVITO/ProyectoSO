@@ -24,7 +24,7 @@ try:
 		sock.sendall(m)
 
 		# Look for the response
-		respuesta = sock.recv(256)
+		respuesta = sock.recv(1024)
 
 		print >>sys.stderr, 'client received "%s"' % respuesta
 

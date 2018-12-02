@@ -17,10 +17,11 @@ swap = []
 historial = []
 terminados = []
 pid = 0
-inCPU = 0
+inCPU = -1
 seconds = 0
 timestamp = datetime.datetime.now()
 sim = True
+firstCmd = True
 
 def initConnection():
 	# Create a TCP/IP socket
@@ -54,16 +55,16 @@ def analyzeData(data):
 		initParameters["quantum"] = float(data[1])
 		connection.sendall(str('Recibido - quantum ' + str(initParameters["quantum"]) + " segundos"))
 
-	elif 'Real' in data:
-		initParameters["realMem"] = float(data[2])
+	elif 'RealMemory' in data:
+		initParameters["realMem"] = float(data[1])
 		connection.sendall(str('Recibido - memoria real ' + str(initParameters["realMem"]) + " KB"))
 
-	elif 'Swap' in data:
-		initParameters["swapMem"] = float(data[2])
+	elif 'SwapMemory' in data:
+		initParameters["swapMem"] = float(data[1])
 		connection.sendall(str('Recibido - memoria swap '+ str(initParameters["swapMem"]) + " KB"))
 
-	elif 'Page' in data:
-		initParameters["pageSize"] = float(data[2])
+	elif 'PageSize' in data:
+		initParameters["pageSize"] = float(data[1])
 		initParameters["numPag"] = int(initParameters["realMem"]/initParameters["pageSize"])
 		initParameters["numSwapPag"] = int(initParameters["swapMem"]/initParameters["pageSize"])
 		initSwap()
@@ -80,9 +81,7 @@ def analyzeData(data):
 
 	elif 'Address' in data:
 		ans = getAddress(int(data[1]), int(data[2]))
-		if ans[0] == -1:
-			buildEntry(data, "", "")
-		elif ans[1] == -1:
+		if ans[1] == -1:
 			buildEntry(data, ans[0], "")
 		else:
 			buildEntry(data, ans[0], ans[1])
@@ -92,11 +91,9 @@ def analyzeData(data):
 		buildEntry(data, ts, "")
 
 	elif 'End' in data:
-		sim = False
-		ts = killAll()
+		ts = end()
 		buildEntry(data, ts, "")
 		print tabulate(historial, headers=["Comando", "Timestamp", "DirReal", "ColaListos", "CPU", "MemReal", "SwapArea", "Terminados"], tablefmt="fancy_grid")
-		connection.sendall(str("Ending simulation"))
 
 	else:
 		connection.sendall(str("Query no valido. Intente otra vez"))
@@ -104,11 +101,57 @@ def analyzeData(data):
 def increaseHist():
 	for p in pages:
 		if p["pid"] != -1:
-			p["hist"] = p["hist"] + 1			
+			p["hist"] = p["hist"] + 1	
+
+def end():
+	sim = False
+	process[inCPU]["Tcpu"] += 1
+	process[inCPU]["vis"] += 1
+	imprimirStats()
+	ts = killAll()
+
+	return ts
+
+def imprimirStats():
+	s = "\n"
+	sumEspera = 0
+	sumTA = 0
+	sumVis = 0
+	sumPF = 0
+	totalVis = 0.0
+
+	for p in process:
+		totalVis += p["vis"]
+
+	for p in process:
+		s += "Proceso: " + str(p["pid"]) + '\n'
+		s += "TCPU: " + str(p["Tcpu"]) + '\n'
+		s += "TEspera: " + str(p["Tespera"]) + '\n'
+		sumEspera += (p["Tespera"])
+
+		s += "Turnaround: " + str(p["Tcpu"]+p["Tespera"]) + '\n' 
+		sumTA += (p["Tcpu"]+p["Tespera"])
+
+		s += "Visitas: " + str(p["vis"]) + '\n'
+		sumVis += (p["vis"])
+
+		s += "Page Faults: " + str(p["pageFault"]) + '\n'
+		sumPF += (p["pageFault"])
+
+		s += "Rendimiento: " + str(float("{0:.2f}".format((1-p["pageFault"]/totalVis)*100))) + '%\n'
+		s += '\n'
+
+	s += "Global: " + '\n'
+	s += "Tespera: " + str(sumEspera/len(process)) + '\n'
+	s += "Turnaround: " + str(sumTA/len(process)) + '\n'
+	s += "Visitas: " + str(sumVis) + '\n'
+	s += "Page Faults: " + str(sumPF) + '\n'
+	s += "Rendimiento: " + str(float("{0:.2f}".format((1-sumPF/totalVis)*100))) + '%\n'
+
+	connection.sendall(s)
 
 def killAll():
-	global inCPU
-
+	global inCPU	
 	terminados.append(inCPU+1)
 	for l in listos:
 		terminados.append(l)
@@ -126,6 +169,8 @@ def killAll():
 	return ts
 
 def killProcess(pid):
+	global inCPU
+
 	terminados.append(pid)
 
 	for p in pages:
@@ -139,6 +184,9 @@ def killProcess(pid):
 	if inCPU == pid-1:
 		if len(listos) != 0:
 			quantum(True)
+		else:
+			inCPU = -1
+			process[pid-1]["cpu"] = False
 	else:
 		listos.remove(pid)
 
@@ -150,25 +198,35 @@ def killProcess(pid):
 
 	return ts
 
+def increaseTEspera():
+	for l in listos:
+		process[l-1]["Tespera"] += 1
+
 def quantum(kill):
 	global seconds
-
-	time = datetime.datetime.now()
-	ts = getTimeStamp(time, True)
-
-
-
-	if len(process) == 0:
-		connection.sendall(str(str(ts)+ " Quantum end. CPU vacio. Se ignora."))
-		return
-	else:
-		if not kill:
-			connection.sendall(str(str(ts)+ " Quantum end"))
 
 	if not kill:
 		seconds = seconds + 1
 
+	time = datetime.datetime.now()
+	ts = getTimeStamp(time, True)
+
+	if len(process) == 0:
+		connection.sendall(str(str(ts)+ " Quantum end. CPU vacio. Se ignora."))
+		return ts
+	else:
+		if not kill:
+			connection.sendall(str(str(ts)+ " Quantum end"))
+
+	process[inCPU]["Tcpu"] += 1
+	increaseTEspera()
+
+	process[inCPU]["vis"] += 1
+
 	increaseHist()
+
+	if len(listos) == 0:
+		return ts
 
 	ind = listos[0]-1
 	listos.remove(listos[0])
@@ -179,11 +237,20 @@ def quantum(kill):
 	return ts
 
 def verifyInsert(proc):
+	global inCPU
 	if searchPage(proc["pid"], proc["lastUsed"], True) != -1:
+		#print "Ya esta"
+		#print "Y es: ", proc["lastUsed"]
+		process[inCPU]["cpu"] = False
+		inCPU = proc["pid"]-1
+		proc["cpu"] = True
+
 		return
 	if memSpace() == 0:
+		#print "MFU"
 		MFU(proc)
 	else:
+		#print "insertar"
 		insertarProceso(proc)
 
 def searchPage(pid, page, memReal):
@@ -203,7 +270,7 @@ def initMem():
 
 def removeFromSwap(pid, p):
 	i = 0
-	while swap[i]["pid"] != pid or swap[i]["p"] != p:
+	while swap[i]["pid"] != pid or swap[i]["pag"] != p:
 		i = i+1
 
 	swap[i]["pid"] = -1
@@ -220,8 +287,8 @@ def getAddress(pid, v):
 	ts = getTimeStamp(time, False)
 
 	if pid != inCPU+1:
-		connection.sendall(str(str(pid)+ " no se esta ejecutando. Se ignora"))
-		return -1,-1
+		connection.sendall(str(str(ts) + str(pid)+ " no se esta ejecutando. Se ignora"))
+		return ts,-1
 
 	res = -1
 
@@ -229,9 +296,15 @@ def getAddress(pid, v):
 	d = v%(initParameters["pageSize"]*1024)
 	marco = searchPage(pid, p, True)
 
-	if d > process[pid-1]["size"]%(1024*initParameters["pageSize"]):
+	#print v
+	#print process[pid-1]["size"]
+
+	if v > process[pid-1]["size"]:
+	#if d > process[pid-1]["size"]%(1024*initParameters["pageSize"]):
 		connection.sendall(str("Direccion "+ str(v) + " fuera de proceso. Se ignora"))
-		return -1,-1
+		return ts,-1
+
+	process[pid-1]["vis"] += 1
 
 	if marco != -1:
 		#print "1"
@@ -246,9 +319,14 @@ def getAddress(pid, v):
 		#print "3"
 		pr = process[pid-1]
 		pr["lastUsed"] = p
-		MFU(pr)
 
-		print "Page fault!"
+		if memSpace() == 0:
+			MFU(pr)
+		else:
+			insertarProceso(pr)
+
+		#process[pid-1]["pageFault"] += 1
+		connection.sendall(str(str(ts) + " Page fault"))
 
 	return ts,res
 
@@ -266,6 +344,8 @@ def memSpace():
 
 def insertarProceso(proc):
 	global inCPU
+
+	proc["pageFault"] += 1
 
 	proc["cpu"] = True
 	if len(process) != 1:
@@ -287,9 +367,10 @@ def insertarProceso(proc):
 	 		return
 
 def getTimeStamp(time, firstTime):
-	global timestamp
+	global timestamp, firstCmd
 
-	if firstTime:
+	if firstTime or firstCmd:
+		firstCmd = False
 		timestamp = time
 		return str(seconds) + ":000"
 
@@ -303,18 +384,18 @@ def crearProceso(size):
 
 	psize = size/(initParameters["pageSize"]*1024)
 	
-	process.append({"pid": pid, "size": size, "psize": math.ceil(psize), "cpu": False, "lastUsed": 0})
-	if len(process) == 1:
+	process.append({"pid": pid, "size": size, "psize": math.ceil(psize), "cpu": False, "lastUsed": 0, "Tcpu": 0, "Tespera": 0, "vis": 0, "pageFault": 0})
+	if len(process) == 1 or len(process)-len(terminados) == 1:
 		insertarProceso(process[-1])
-		firstTime = True
 		process[-1]["cpu"] = True
+		inCPU = 0
 		#process[-1]["listaPagProc"][0] = 1
 	else:
 		listos.append(process[-1]["pid"])
 		firstTime = False
 
 	time = datetime.datetime.now()
-	ts = getTimeStamp(time, firstTime)
+	ts = getTimeStamp(time, False)
 
 	connection.sendall(str(str(ts)+ " process "+ str(process[-1]["pid"])+ " created size "+ str(psize)+ " pages"))
 	return ts
@@ -346,6 +427,7 @@ def insertarEnSwap(pagina):
 
 def MFU(proc):
 	arr = sorted(pages, key=lambda k: (k["freq"], k["hist"]), reverse = True)
+	#print arr
 	toRemove = arr[0]
 
 	i = 0
