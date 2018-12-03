@@ -55,7 +55,7 @@ def analyzeData(data):
 	elif'QuantumV' in data:
 		initParameters["quantum"] = datetime.timedelta(seconds=float(data[1]))
 		initParameters["quantumFloat"] = float(data[1])
-		connection.sendall(str('Recibido - quantum ' + str(initParameters["quantum"]) + " segundos"))
+		connection.sendall(str('Recibido - quantum ' + str(initParameters["quantum"].seconds) + "." + (str(initParameters["quantum"].microseconds)) + " segundos"))
 
 	elif 'RealMemory' in data:
 		initParameters["realMem"] = float(data[1])
@@ -203,7 +203,7 @@ def killProcess(pid):
 
 def increaseTEspera():
 	for l in listos:
-		process[l-1]["Tespera"] += 1
+		process[l-1]["Tespera"] += initParameters["quantumFloat"]
 
 def quantum(kill):
 	global seconds, n
