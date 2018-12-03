@@ -108,7 +108,7 @@ def increaseHist():
 def end():
 	sim = False
 	process[inCPU]["Tcpu"] += initParameters["quantumFloat"]	
-	process[inCPU]["vis"] += initParameters["quantumFloat"]	
+	process[inCPU]["vis"] += 1
 	imprimirStats()
 	ts = killAll()
 
@@ -224,7 +224,7 @@ def quantum(kill):
 	process[inCPU]["Tcpu"] += initParameters["quantumFloat"]
 	increaseTEspera()
 
-	process[inCPU]["vis"] += initParameters["quantumFloat"]
+	process[inCPU]["vis"] += 1
 
 	increaseHist()
 
