@@ -153,8 +153,9 @@ def imprimirStats():
 	connection.sendall(s)
 
 def killAll():
-	global inCPU	
-	terminados.append(inCPU+1)
+	global inCPU
+	if inCPU != -1:	
+		terminados.append(inCPU+1)
 	for l in listos:
 		terminados.append(l)
 
